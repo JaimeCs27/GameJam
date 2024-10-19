@@ -24,11 +24,11 @@ public class PlayerMovement : MonoBehaviour
 
     public Rigidbody rb;
 
-    bool dash_available = true;
-    bool is_dashing = false;
-    float dashing_power = 24f;
-    float dashing_time = 0.2f;
-    float dashing_cooldown = 2f;
+    public bool dash_available = true;
+    public bool is_dashing = false;
+    public float dashing_power = 24f;
+    public float dashing_time = 0.2f;
+    public float dashing_cooldown = 2f;
     [SerializeField] private TrailRenderer trail;
 
     public float distanceToGround;
