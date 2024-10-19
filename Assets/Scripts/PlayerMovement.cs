@@ -24,11 +24,16 @@ public class PlayerMovement : MonoBehaviour
 
     public Rigidbody rb;
 
+    bool dash_available = true;
+    bool is_dashing = false;
+    float dashing_power = 24f;
+    float dashing_time = 0.2f;
+    float dashing_cooldown = 2f;
+    [SerializeField] private TrailRenderer trail;
+
     public float distanceToGround;
 
     private bool controllingClone = false;
-
-    private float axis = 0; // 0 is x axis and 1 is y axis
 
     public Vector3 totalVel;
 
@@ -39,8 +44,6 @@ public class PlayerMovement : MonoBehaviour
         distanceToGround = GetComponent<Collider>().bounds.extents.y;
         rb.constraints = RigidbodyConstraints.FreezeRotation;
         Velocity = new Vector3(0,0,0);
-        gravity = new Vector3(0,-0.09f,0);
-        totalVel = new Vector3(0,0,0);
     }
 
     void Update()
@@ -66,20 +69,26 @@ public class PlayerMovement : MonoBehaviour
         {
             SwitchToOriginalPlayer();
         }
+        if (is_dashing)
+        {
+            return;
+        }
+
+        if (Input.GetKeyDown(KeyCode.LeftShift) && dash_available)
+        {
+            StartCoroutine(Dash());
+        }
     }
 
     void RotatePlayer(GameObject player, float angle)
     {
         player.transform.Rotate(0, angle, 0);
-        float current_player_angle = player.transform.rotation.eulerAngles.y;
-        axis = (current_player_angle / 90) % 2;
     }
 
     void SwitchToOriginalPlayer()
     {
         controllingClone = false;  // Ahora volvemos a controlar el jugador original
-        // cam.GetComponent<CamMovement>().target = originalPlayer.transform;
-        originalPlayer.position = clonePlayer.transform.position;
+        originalPlayer.transform.position = clonePlayer.transform.position;
         Destroy(clonePlayer);
         clonePlayer = null;
     }
@@ -101,10 +110,6 @@ public class PlayerMovement : MonoBehaviour
     {
         clonePlayer = Instantiate(playerPrefab, originalPlayer.transform.position, originalPlayer.transform.rotation);
         controllingClone = true;
-        // cam.GetComponent<CamMovement>().target = clonePlayer.transform;
-        // DisableCollider(clonePlayer);
-        // Eliminar el componente PlayerMovement del clon
-        Destroy(clonePlayer.GetComponent<PlayerMovement>());
     }
 
     private void Movement(GameObject player)
@@ -127,16 +132,26 @@ public class PlayerMovement : MonoBehaviour
 
         // Mantén la velocidad vertical actual y aplica la nueva velocidad en X y Z
         Rigidbody body = player.GetComponent<Rigidbody>();
-        // Debug.Log("Movement X: " + Mathf.RoundToInt(movement.x));
-        // Debug.Log("Movement Z: " + Mathf.RoundToInt(movement.z));
-        Debug.Log("Axis: " + axis);
-        if (axis == 0) {
-            body.velocity = new Vector3(movement.x, body.velocity.y, 0);
-        } else {
-            body.velocity = new Vector3(0, body.velocity.y, movement.z);
-        }
+
+        body.velocity = new Vector3(movement.x, body.velocity.y, movement.z);
     }
     
+    private IEnumerator Dash()
+    {
+        Debug.Log("Dash");
+        dash_available = false;
+        is_dashing = true; 
+        rb.useGravity = false;
+        rb.velocity = new Vector3(transform.localScale.x * dashing_power, 0f, 0f);
+        trail.emitting = true;
+        yield return new WaitForSeconds(dashing_time);
+        trail.emitting = false;
+        rb.useGravity  = true;
+        is_dashing = false;
+        yield return new WaitForSeconds(dashing_cooldown);
+        dash_available = true;
+    }
+
     private void PlayerJump(GameObject player) 
     {
         if (!IsGrounded(player)) return;

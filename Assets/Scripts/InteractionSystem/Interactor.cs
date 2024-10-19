@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class PlayerInteractor : MonoBehaviour 
+public class Interactor : MonoBehaviour 
 {
     public Transform interactPoint;
     public float interactPointRadius = 0.5f;
@@ -13,5 +13,10 @@ public class PlayerInteractor : MonoBehaviour
     private void Update() 
     {
         numFound = Physics.OverlapSphereNonAlloc(interactPoint.position, interactPointRadius, colliders, interactableMask);
+    }
+
+    private void OnDrawGizmos() {
+        Gizmos.color = Color.red;
+        Gizmos.DrawWireSphere(interactPoint.position, interactPointRadius);
     }
 }
