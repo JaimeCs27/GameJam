@@ -56,10 +56,12 @@ public class PlayerMovement : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.E))
         {
             RotatePlayer(originalPlayer, 90f);
+            RotatePlayer(clonePlayer, 90f);
         }
         if (Input.GetKeyDown(KeyCode.Q))
         {
             RotatePlayer(originalPlayer, -90f);
+            RotatePlayer(clonePlayer, 90f);
         }
         
         if (Input.GetKeyDown(KeyCode.C) && !controllingClone  && clonePlayer == null){
@@ -140,14 +142,21 @@ public class PlayerMovement : MonoBehaviour
     {
         Debug.Log("Dash");
         dash_available = false;
-        is_dashing = true; 
+        is_dashing = true;
+        float originalDrag = rb.drag;
+
         rb.useGravity = false;
-        rb.velocity = new Vector3(transform.localScale.x * dashing_power, 0f, 0f);
-        trail.emitting = true;
+        rb.drag = 0f;
+
+        Vector3 dashVelocity = transform.forward * dashing_power;
+        rb.velocity = new Vector3(dashVelocity.x, 0f, dashVelocity.z);
+
         yield return new WaitForSeconds(dashing_time);
-        trail.emitting = false;
-        rb.useGravity  = true;
+
+        rb.useGravity = true;
+        rb.drag = originalDrag;
         is_dashing = false;
+
         yield return new WaitForSeconds(dashing_cooldown);
         dash_available = true;
     }
