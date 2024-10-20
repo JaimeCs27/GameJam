@@ -7,7 +7,6 @@ public enum CamState {X, Y,InvX, InvY}
 
 public class PlayerMovement : MonoBehaviour
 {
-
     public float movement_speed = 3.0f;
     public float jump_speed = 6f;
     
@@ -33,9 +32,14 @@ public class PlayerMovement : MonoBehaviour
 
     public float distanceToGround;
 
+    public float rotationSpeed = 5f;
     private bool controllingClone = false;
 
     public Vector3 totalVel;
+
+    public int current_dimension = 0; 
+
+    private bool double_jump_allowed = false;
 
     void Start()
     {
@@ -55,13 +59,15 @@ public class PlayerMovement : MonoBehaviour
         }
         if (Input.GetKeyDown(KeyCode.E))
         {
-            RotatePlayer(originalPlayer, 90f);
-            RotatePlayer(clonePlayer, 90f);
+            RotatePlayer(originalPlayer, -90f);
+            if (clonePlayer != null)
+                RotatePlayer(clonePlayer, -90f);
         }
         if (Input.GetKeyDown(KeyCode.Q))
         {
-            RotatePlayer(originalPlayer, -90f);
-            RotatePlayer(clonePlayer, 90f);
+            RotatePlayer(originalPlayer, 90f);
+            if (clonePlayer != null)
+                RotatePlayer(clonePlayer, 90f);
         }
         
         if (Input.GetKeyDown(KeyCode.C) && !controllingClone  && clonePlayer == null){
@@ -84,7 +90,36 @@ public class PlayerMovement : MonoBehaviour
 
     void RotatePlayer(GameObject player, float angle)
     {
-        player.transform.Rotate(0, angle, 0);
+        // Inicia la rotación suave con una coroutine
+        StartCoroutine(RotateSmoothly(player, angle));
+        
+        // Actualiza la dimensión actual del jugador
+        float viewAngle = (angle / 90) != 0 ? 1f : -1f;
+        current_dimension = (int)(current_dimension + viewAngle + 4) % 4;
+    }
+
+    IEnumerator RotateSmoothly(GameObject player, float angle)
+    {
+        // Obtén la rotación inicial del jugador
+        Quaternion initialRotation = player.transform.rotation;
+        
+        // Calcula la rotación objetivo
+        Quaternion targetRotation = initialRotation * Quaternion.Euler(0, angle, 0);
+
+        float time = 0f;
+
+        while (time < 1f)
+        {
+            // Interpola la rotación usando Lerp
+            player.transform.rotation = Quaternion.Lerp(initialRotation, targetRotation, time);
+            time += Time.deltaTime * rotationSpeed;
+
+            // Espera hasta el siguiente frame
+            yield return null;
+        }
+
+        // Asegúrate de que la rotación final sea exacta
+        player.transform.rotation = targetRotation;
     }
 
     void SwitchToOriginalPlayer()
@@ -140,18 +175,60 @@ public class PlayerMovement : MonoBehaviour
     
     private IEnumerator Dash()
     {
-        Debug.Log("Dash");
         dash_available = false;
         is_dashing = true;
+
         float originalDrag = rb.drag;
-
-        rb.useGravity = false;
+        rb.useGravity = false; 
         rb.drag = 0f;
+        
+        Vector3 tpPosition = transform.position;
 
-        Vector3 dashVelocity = transform.forward * dashing_power;
-        rb.velocity = new Vector3(dashVelocity.x, 0f, 0f);
+        Vector3 movementDirection = Vector3.zero;
+
+        if (Input.GetKey(KeyCode.W)) 
+        {
+            movementDirection -= transform.forward; 
+        }
+        if (Input.GetKey(KeyCode.S))
+        {
+            movementDirection += transform.forward; 
+        }
+        if (Input.GetKey(KeyCode.A))
+        {
+            movementDirection += transform.right; 
+        }
+        if (Input.GetKey(KeyCode.D))
+        {
+            movementDirection -= transform.right; 
+        }
+
+        movementDirection = movementDirection.normalized;
+
+        if (movementDirection == Vector3.zero)
+        {
+            if (current_dimension == 1)
+            {
+                movementDirection = -transform.forward; 
+            }
+            else
+            {
+                movementDirection = -transform.right; 
+            }
+        }
+
+        tpPosition += movementDirection * dashing_power;
+
+        tpPosition.y = transform.position.y;
+
+        trail.emitting = true;
+
+        rb.position = tpPosition;
+        Debug.Log("Teleported to position: " + tpPosition);
 
         yield return new WaitForSeconds(dashing_time);
+
+        trail.emitting = false;
 
         rb.useGravity = true;
         rb.drag = originalDrag;
@@ -161,13 +238,23 @@ public class PlayerMovement : MonoBehaviour
         dash_available = true;
     }
 
+
     private void PlayerJump(GameObject player) 
     {
-        if (!IsGrounded(player)) return;
-        Rigidbody addVel =  player.GetComponent<Rigidbody>();
-        addVel.velocity = new Vector3(addVel.velocity.x, jump_speed, addVel.velocity.z);
-        //totalVel += new Vector3(0, jump_speed, 0);
+        Rigidbody addVel = player.GetComponent<Rigidbody>();
 
+        if (IsGrounded(player) || double_jump_allowed)
+        {
+            if (IsGrounded(player))
+            {
+                double_jump_allowed = true;
+            }
+            else
+            {
+                double_jump_allowed = false;
+            }
+            addVel.velocity = new Vector3(addVel.velocity.x, jump_speed, addVel.velocity.z);
+        }
     }
 
     private bool IsGrounded(GameObject player)
@@ -183,7 +270,7 @@ public class PlayerMovement : MonoBehaviour
 
         // Comprueba si hay algún collider del suelo en el área del OverlapBox.
         Collider[] colliders = Physics.OverlapBox(boxCenter, boxHalfExtents, Quaternion.identity, groundLayerMask, QueryTriggerInteraction.Ignore);
-        Debug.Log(colliders.Length > 0);
+        // Debug.Log(colliders.Length > 0);
         // Si encuentra algún collider, significa que el jugador está tocando el suelo.
         return colliders.Length > 0;
     }

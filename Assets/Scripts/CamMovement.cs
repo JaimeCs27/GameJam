@@ -9,7 +9,7 @@ public class CamMovement : MonoBehaviour
 
     void Update()
     {
-        transform.LookAt(target);
+        // transform.LookAt(target);
     }
 
 }
