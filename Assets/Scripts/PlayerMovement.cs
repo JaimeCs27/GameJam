@@ -25,6 +25,8 @@ public class PlayerMovement : MonoBehaviour
 
     public Rigidbody rb;
 
+    public GameObject spawnPoint;
+
     public bool dash_available = true;
     public bool is_dashing = false;
     public float dashing_power = 24f;
@@ -52,10 +54,15 @@ public class PlayerMovement : MonoBehaviour
         distanceToGround = GetComponent<Collider>().bounds.extents.y;
         rb.constraints = RigidbodyConstraints.FreezeRotation;
         Velocity = new Vector3(0,0,0);
+        originalPlayer.transform.position = spawnPoint.transform.position;
     }
 
     void Update()
     {
+        if (originalPlayer.transform.position.y <= 0)
+        {
+            Respawn();
+        }
         Movement(originalPlayer);
         if (Input.GetKeyDown(KeyCode.Space))
         {
@@ -132,6 +139,11 @@ public class PlayerMovement : MonoBehaviour
         isRotating = false;
     }
 
+    private void Respawn()
+    {
+        originalPlayer.transform.position = spawnPoint.transform.position;
+    }
+
     private IEnumerator SwitchToOriginalPlayer()
     {
         controllingClone = false;  // Ahora volvemos a controlar el jugador original
@@ -169,12 +181,12 @@ public class PlayerMovement : MonoBehaviour
     {
         Vector3 movement = Vector3.zero;
 
-        if (Input.GetKey(KeyCode.A))
+        if (Input.GetKey(KeyCode.A) && !isInFront(player, player.transform.right))
         {
             // Mover hacia la izquierda según la orientación de la cámara
             movement -= cam.transform.right;
         }
-        if (Input.GetKey(KeyCode.D))
+        if (Input.GetKey(KeyCode.D) && !isInFront(player, player.transform.right * -1))
         {
             // Mover hacia la derecha según la orientación de la cámara
             movement += cam.transform.right;
@@ -268,7 +280,23 @@ public class PlayerMovement : MonoBehaviour
         }
     }
 
-    
+    private bool isInFront(GameObject player, Vector3 direction)
+    {
+        // Centro del OverlapBox, un poco por debajo del jugador para detectar el suelo.
+        Vector3 boxCenter = player.transform.position + direction * 0.1f;
+        
+        // Tamaño del OverlapBox. Los half extents son la mitad de las dimensiones de la caja.
+        Vector3 boxHalfExtents = new Vector3(0.1f, 0.01f, 0.1f); // Ajusta los valores para que se adapten al tamaño del jugador.
+        
+        // Capa del suelo. Usa "Ground" si tienes una capa específica, o usa el valor por defecto si no.
+        int groundLayerMask = LayerMask.GetMask("Floor");
+
+        // Comprueba si hay algún collider del suelo en el área del OverlapBox.
+        Collider[] colliders = Physics.OverlapBox(boxCenter, boxHalfExtents, Quaternion.identity, groundLayerMask, QueryTriggerInteraction.Ignore);
+
+        // Si encuentra algún collider, significa que el jugador está tocando el suelo.
+        return colliders.Length > 0;
+    }
 
     private bool IsGrounded(GameObject player)
     {
@@ -309,7 +337,7 @@ public class PlayerMovement : MonoBehaviour
         Vector3 boxCenter = player.transform.position + Vector3.down * 0.1f;
 
         // Tamaño del OverlapBox. Los half extents son la mitad de las dimensiones de la caja.
-        Vector3 boxHalfExtents = new Vector3(0.1f, 0.1f, 0.1f); // Ajusta los valores para que se adapten al tamaño del jugador.
+        Vector3 boxHalfExtents = new Vector3(0.1f, 0.01f, 0.1f); // Ajusta los valores para que se adapten al tamaño del jugador.
 
         // Configurar el color del Gizmo.
         Gizmos.color = Color.red;
