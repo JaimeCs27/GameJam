@@ -33,6 +33,8 @@ public class PlayerMovement : MonoBehaviour
     public float dashing_time = 0.2f;
     public float dashing_cooldown = 2f;
     [SerializeField] private TrailRenderer trail;
+    [SerializeField] private SpriteRenderer spriteRenderer;
+    private bool isFacingRight = true;
 
     public float distanceToGround;
 
@@ -46,6 +48,8 @@ public class PlayerMovement : MonoBehaviour
     private bool double_jump_allowed = false;
 
     private bool isRotating = false;
+
+    public Animator animator; 
 
     void Start()
     {
@@ -63,6 +67,11 @@ public class PlayerMovement : MonoBehaviour
         {
             Respawn();
         }
+
+        UpdateAnimationState();
+
+        UpdatePlayerViewDirection();
+
         Movement(originalPlayer);
         if (Input.GetKeyDown(KeyCode.Space))
         {
@@ -97,6 +106,27 @@ public class PlayerMovement : MonoBehaviour
         {
             StartCoroutine(Dash());
         }
+    }
+
+    private void UpdateAnimationState()
+    {
+        animator.SetFloat("Speed", Mathf.Abs(rb.velocity.x + rb.velocity.z));
+    }
+
+    private void UpdatePlayerViewDirection()
+    {
+        float horizontal = Input.GetAxisRaw("Horizontal");
+
+        if (horizontal > 0)
+        {
+            isFacingRight = true;
+        }
+        else if (horizontal < 0)
+        {
+            isFacingRight = false;
+        }
+
+        spriteRenderer.flipX = isFacingRight;
     }
 
     void RotatePlayer(GameObject player, float angle)
