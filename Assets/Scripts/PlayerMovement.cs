@@ -149,7 +149,7 @@ public class PlayerMovement : MonoBehaviour
         rb.drag = 0f;
 
         Vector3 dashVelocity = transform.forward * dashing_power;
-        rb.velocity = new Vector3(dashVelocity.x, 0f, dashVelocity.z);
+        rb.velocity = new Vector3(dashVelocity.x, 0f, 0f);
 
         yield return new WaitForSeconds(dashing_time);
 
