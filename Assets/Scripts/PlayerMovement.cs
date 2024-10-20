@@ -15,6 +15,8 @@ public class PlayerMovement : MonoBehaviour
     public Vector3 cameraOffset = new Vector3(0, 0, 0);
 
     public CamState camera_current_angle = CamState.X;
+    public float clone_cooldown = 5.0f;
+    public bool is_clone_available = true;
 
     public GameObject playerPrefab;  // Prefab del jugador
     private GameObject originalPlayer = null;  // Referencia al jugador original
@@ -41,6 +43,8 @@ public class PlayerMovement : MonoBehaviour
 
     private bool double_jump_allowed = false;
 
+    private bool isRotating = false;
+
     void Start()
     {
         originalPlayer = this.gameObject;
@@ -53,29 +57,29 @@ public class PlayerMovement : MonoBehaviour
     void Update()
     {
         Movement(originalPlayer);
-        if (Input.GetKeyDown(KeyCode.Space) && IsGrounded(originalPlayer))
+        if (Input.GetKeyDown(KeyCode.Space))
         {
             PlayerJump(originalPlayer);
         }
-        if (Input.GetKeyDown(KeyCode.E))
+        if (Input.GetKeyDown(KeyCode.RightArrow) || Input.GetKeyDown(KeyCode.Mouse1))
         {
             RotatePlayer(originalPlayer, -90f);
             if (clonePlayer != null)
                 RotatePlayer(clonePlayer, -90f);
         }
-        if (Input.GetKeyDown(KeyCode.Q))
+        if (Input.GetKeyDown(KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.Mouse0))
         {
             RotatePlayer(originalPlayer, 90f);
             if (clonePlayer != null)
                 RotatePlayer(clonePlayer, 90f);
         }
         
-        if (Input.GetKeyDown(KeyCode.C) && !controllingClone  && clonePlayer == null){
+        if (Input.GetKeyDown(KeyCode.C) && !controllingClone  && clonePlayer == null && is_clone_available){
             CreateClone();
         }
-        else if (Input.GetKeyDown(KeyCode.V) && controllingClone)  
+        else if (Input.GetKeyDown(KeyCode.V) && controllingClone )  
         {
-            SwitchToOriginalPlayer();
+            StartCoroutine(SwitchToOriginalPlayer());
         }
         if (is_dashing)
         {
@@ -90,8 +94,10 @@ public class PlayerMovement : MonoBehaviour
 
     void RotatePlayer(GameObject player, float angle)
     {
-        // Inicia la rotación suave con una coroutine
-        StartCoroutine(RotateSmoothly(player, angle));
+        if (!isRotating)
+        {
+            StartCoroutine(RotateSmoothly(player, angle));
+        }
         
         // Actualiza la dimensión actual del jugador
         float viewAngle = (angle / 90) != 0 ? 1f : -1f;
@@ -100,6 +106,8 @@ public class PlayerMovement : MonoBehaviour
 
     IEnumerator RotateSmoothly(GameObject player, float angle)
     {
+        isRotating = true;
+
         // Obtén la rotación inicial del jugador
         Quaternion initialRotation = player.transform.rotation;
         
@@ -120,14 +128,22 @@ public class PlayerMovement : MonoBehaviour
 
         // Asegúrate de que la rotación final sea exacta
         player.transform.rotation = targetRotation;
+
+        isRotating = false;
     }
 
-    void SwitchToOriginalPlayer()
+    private IEnumerator SwitchToOriginalPlayer()
     {
         controllingClone = false;  // Ahora volvemos a controlar el jugador original
         originalPlayer.transform.position = clonePlayer.transform.position;
         Destroy(clonePlayer);
         clonePlayer = null;
+
+        is_clone_available = false;
+
+        yield return new WaitForSeconds(clone_cooldown);
+
+        is_clone_available = true;
     }
 
     private void DisableCollider(GameObject clone)
@@ -221,14 +237,9 @@ public class PlayerMovement : MonoBehaviour
 
         tpPosition.y = transform.position.y;
 
-        trail.emitting = true;
-
         rb.position = tpPosition;
-        Debug.Log("Teleported to position: " + tpPosition);
 
         yield return new WaitForSeconds(dashing_time);
-
-        trail.emitting = false;
 
         rb.useGravity = true;
         rb.drag = originalDrag;
@@ -256,6 +267,8 @@ public class PlayerMovement : MonoBehaviour
             addVel.velocity = new Vector3(addVel.velocity.x, jump_speed, addVel.velocity.z);
         }
     }
+
+    
 
     private bool IsGrounded(GameObject player)
     {
